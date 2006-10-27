@@ -13,6 +13,7 @@
 <use name=RecoTracker/TkHitPairs>
 <use name=RecoTracker/TkTrackingRegions>
 <use name=RecoPixelVertexing/PixelTriplets>
+<use name=RecoPixelVertexing/PixelTrackFitting>
 
 <library file="HitTripletProducer.cc" name="HitTripletProducer">
 <flags SEAL_PLUGIN_NAME="HitTripletProducer">
