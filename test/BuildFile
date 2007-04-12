@@ -2,7 +2,7 @@
 <use name=root>
 
 <use name=FWCore/Framework>
-<use name=Foundation/PluginManager>
+<use name=FWCore/PluginManager>
 <use name=FWCore/ParameterSet>
 
 <use name=Geometry/Records>
@@ -15,6 +15,6 @@
 <use name=RecoPixelVertexing/PixelTriplets>
 
 <library file="HitTripletProducer.cc" name="HitTripletProducer">
-<flags SEAL_PLUGIN_NAME="HitTripletProducer">
+<flags EDM_PLUGIN=1>
 </library>
 
