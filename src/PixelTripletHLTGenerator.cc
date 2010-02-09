@@ -9,6 +9,7 @@
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
 #include "RecoPixelVertexing/PixelTriplets/src/ThirdHitCorrection.h"
 #include "RecoTracker/TkHitPairs/interface/RecHitsSortedInPhi.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include <iostream>
 
 using pixelrecoutilities::LongitudinalBendingCorrection;
@@ -45,9 +46,9 @@ void PixelTripletHLTGenerator::hitTriplets(
     const edm::Event & ev,
     const edm::EventSetup& es)
 {
-
   OrderedHitPairs pairs; pairs.reserve(30000);
   OrderedHitPairs::const_iterator ip;
+  
   thePairGenerator->hitPairs(region,pairs,ev,es);
 
   if (pairs.size() ==0) return;
@@ -66,7 +67,7 @@ void PixelTripletHLTGenerator::hitTriplets(
   }
 
 
-  double imppar = region.originRBound();;
+  double imppar = region.originRBound();
   double curv = PixelRecoUtilities::curvature(1/region.ptMin(), es);
 
   for (ip = pairs.begin(); ip != pairs.end(); ip++) {
@@ -80,6 +81,7 @@ void PixelTripletHLTGenerator::hitTriplets(
     PixelRecoPointRZ point2(gp2.perp(), gp2.z());
     PixelRecoLineRZ  line(point1, point2);
     ThirdHitPredictionFromInvParabola predictionRPhi(gp1,gp2,imppar,curv,extraHitRPhitolerance);
+    ThirdHitPredictionFromInvParabola predictionRPhitmp(gp1tmp,gp2tmp,imppar+region.origin().perp(),curv,extraHitRPhitolerance);
 
     for (int il=0; il <=size-1; il++) {
       const DetLayer * layer = theLayers[il].detLayer();
@@ -109,10 +111,10 @@ void PixelTripletHLTGenerator::hitTriplets(
               min(rzRange.max(), predictionRZ.detSize().max()) );
         }
         if (radius.empty()) continue;
-        Range rPhi1m = predictionRPhi(radius.max(), -1);
-        Range rPhi1p = predictionRPhi(radius.max(),  1);
-        Range rPhi2m = predictionRPhi(radius.min(), -1);
-        Range rPhi2p = predictionRPhi(radius.min(),  1);
+        Range rPhi1m = predictionRPhitmp(radius.max(), -1);
+        Range rPhi1p = predictionRPhitmp(radius.max(),  1);
+        Range rPhi2m = predictionRPhitmp(radius.min(), -1);
+        Range rPhi2p = predictionRPhitmp(radius.min(),  1);
         Range rPhi1 = rPhi1m.sum(rPhi1p);
         Range rPhi2 = rPhi2m.sum(rPhi2p);
         correction.correctRPhiRange(rPhi1);
@@ -174,6 +176,7 @@ void PixelTripletHLTGenerator::hitTriplets(
       } 
     }
   }
+
   delete [] thirdHitMap;
 }
 
