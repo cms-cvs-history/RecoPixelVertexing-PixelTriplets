@@ -35,12 +35,15 @@ PixelTripletHLTGenerator:: PixelTripletHLTGenerator(const edm::ParameterSet& cfg
   theMaxElement=cfg.getParameter<unsigned int>("maxElement");
   dphi =  (useFixedPreFiltering) ?  cfg.getParameter<double>("phiPreFiltering") : 0;
 
+  if (cfg.exists("SeedComparitorPSet")){
   edm::ParameterSet comparitorPSet =
     cfg.getParameter<edm::ParameterSet>("SeedComparitorPSet");
   std::string comparitorName = comparitorPSet.getParameter<std::string>("ComponentName");
   theComparitor = (comparitorName == "none") ?
     0 :  SeedComparitorFactory::get()->create( comparitorName, comparitorPSet);
-
+  }
+  else
+    theComparitor=0;
 }
 
 PixelTripletHLTGenerator::~PixelTripletHLTGenerator()
