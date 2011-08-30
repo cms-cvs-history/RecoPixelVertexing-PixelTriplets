@@ -93,6 +93,8 @@ QuadrupletSeedMerger::~QuadrupletSeedMerger() {
 ///
 const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const OrderedSeedingHits& inputTriplets, const edm::EventSetup& es ) {
 
+  
+  typedef std::pair<SeedingHitSet, std::pair<double,double> > tripletWithDir;
 
   // the list of layers on which quadruplets should be formed
   edm::ESHandle<SeedingLayerSetsBuilder> layerBuilder;
@@ -101,9 +103,12 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
 
   // make a working copy of the input triplets
   // to be able to remove merged triplets
-  std::list<SeedingHitSet> tripletList;
+  //std::list<SeedingHitSet> tripletList;
+  std::list<tripletWithDir> tripletList;
+  
   for( unsigned int it = 0; it < inputTriplets.size(); ++it ) {
-    tripletList.push_back( inputTriplets[it] );
+    const std::pair<double,double> direction = calculatePhiEta( inputTriplets[it] );
+    tripletList.push_back( tripletWithDir( inputTriplets[it], direction ) );
   }
   const unsigned int nInputTriplets = tripletList.size();
 
@@ -115,16 +120,18 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
   // (code is also used for pairs..)
   // if not, copy the input to the output & return
   bool isAllTriplets = true;
-  for( std::list<SeedingHitSet>::iterator triplet = tripletList.begin(); triplet != tripletList.end(); ++triplet ) {
-    if( triplet->size() != 3 ) isAllTriplets = false;
+  for( std::list<tripletWithDir>::iterator triplet = tripletList.begin(); triplet != tripletList.end(); ++triplet ) {
+  //  for( std::list<SeedingHitSet>::iterator triplet = tripletList.begin(); triplet != tripletList.end(); ++triplet ) {
+    if( triplet->first.size() != 3 ) isAllTriplets = false;
   }
 
   if( !isAllTriplets && isMergeTriplets_ )
     std::cout << "[QuadrupletSeedMerger::mergeTriplets] (in HLT) ** bailing out since non-triplets in input." << std::endl;
 
   if( !isAllTriplets || !isMergeTriplets_ ) {
-    for( std::list<SeedingHitSet>::const_iterator it = tripletList.begin(); it != tripletList.end(); ++it ) {
-      theResult.push_back( *it );
+    //    for( std::list<SeedingHitSet>::const_iterator it = tripletList.begin(); it != tripletList.end(); ++it ) {
+    for( std::list<tripletWithDir>::const_iterator it = tripletList.begin(); it != tripletList.end(); ++it ) {
+      theResult.push_back( it->first );
     }
 
     return theResult;
@@ -163,17 +170,30 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
 	std::pair<SeedMergerPixelLayer, SeedMergerPixelLayer> layersToBeMerged( nonSharedLayers.at( 0 ), nonSharedLayers.at( 1 )  );
 
 	// loop all possible triplet pairs (which come as input)
-  	for( std::list<SeedingHitSet>::iterator triplet1 = tripletList.begin(); triplet1 != tripletList.end(); ++triplet1 ) {
-  	  for( std::list<SeedingHitSet>::iterator triplet2 = ++std::list<SeedingHitSet>::iterator( triplet1 );
-  	       triplet2 != tripletList.end(); ++triplet2 ) {
+//   	for( std::list<SeedingHitSet>::iterator triplet1 = tripletList.begin(); triplet1 != tripletList.end(); ++triplet1 ) {
+//   	  for( std::list<SeedingHitSet>::iterator triplet2 = ++std::list<SeedingHitSet>::iterator( triplet1 );
+//   	       triplet2 != tripletList.end(); ++triplet2 ) {
+  	for( std::list<tripletWithDir>::iterator tripletWithDir1 = tripletList.begin(); tripletWithDir1 != tripletList.end(); ++tripletWithDir1 ) {
+  	  for( std::list<tripletWithDir>::iterator tripletWithDir2 = ++std::list<tripletWithDir>::iterator( tripletWithDir1 );
+  	       tripletWithDir2 != tripletList.end(); ++tripletWithDir2 ) {
+
+	    const SeedingHitSet& triplet1 = tripletWithDir1->first;
+	    const SeedingHitSet& triplet2 = tripletWithDir2->first;
+
+	    ///////////////////////////////////////////////////////
+            const std::pair<double,double>& phiEta1 = tripletWithDir1->second;
+	    const std::pair<double,double>& phiEta2 = tripletWithDir2->second;
+ 	    if( abs( phiEta1.first - phiEta2.first ) > 0.15 ) continue;
+ 	    if( abs( phiEta1.second - phiEta2.second ) > 0.05 ) continue;
+	    ///////////////////////////////////////////////////////
 
 	    // do both triplets have shared hits on these two layers?
 	    std::pair<TransientTrackingRecHit::ConstRecHitPointer,TransientTrackingRecHit::ConstRecHitPointer> sharedHits;
-	    if( isTripletsShareHitsOnLayers( *triplet1, *triplet2, sharedLayers, sharedHits ) ) {
+	    if( isTripletsShareHitsOnLayers( triplet1, triplet2, sharedLayers, sharedHits ) ) {
 
 	      // are the remaining hits on different layers?
 	      std::pair<TransientTrackingRecHit::ConstRecHitPointer,TransientTrackingRecHit::ConstRecHitPointer> nonSharedHits;
-	      if( isMergeableHitsInTriplets( *triplet1, *triplet2, layersToBeMerged, nonSharedHits ) ) {
+	      if( isMergeableHitsInTriplets( triplet1, triplet2, layersToBeMerged, nonSharedHits ) ) {
 
 		// create an intermediate vector with all hits
 		std::vector<TransientTrackingRecHit::ConstRecHitPointer> unsortedHits;
@@ -189,24 +209,15 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
 		SeedingHitSet quadruplet;
 		for( unsigned int aHit = 0; aHit < unsortedHits.size(); ++aHit ) quadruplet.add( unsortedHits[aHit] );
 
-// 		std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
-// 		std::cout << "~~~~ TRIPLET1:" << std::endl;
-// 		printNtuplet( *triplet1 );
-// 		std::cout << "~~~~ TRIPLET2:" << std::endl;
-// 		printNtuplet( *triplet2 );
-// 		std::cout << "~~~~ QUADPLET:" << std::endl;
-// 		printNtuplet( quadruplet );
-// 	        std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
-
 		// add to result
 		if( isValidQuadruplet( quadruplet, currentLayers ) ) {
 		  // insert this quadruplet
 		  theResult.push_back( quadruplet );
 		  // remove both triplets from the list,
 		  // needs this 4-permutation since we're in a double loop
-		  tripletList.erase( triplet2 );
-		  triplet1 = tripletList.erase( triplet1 );
-                  triplet2 = ( triplet1 == tripletList.end() ) ? --triplet1 : triplet1;
+		  tripletList.erase( tripletWithDir2 );
+		  tripletWithDir1 = tripletList.erase( tripletWithDir1 );
+		  tripletWithDir2 = ( tripletWithDir1 == tripletList.end() ) ? --tripletWithDir1 : tripletWithDir1;
 		}
 
 	      } // isMergeableHitsInTriplets
@@ -227,8 +238,8 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
   
   // add the remaining triplets
   if( isAddRemainingTriplets_ ) {
-    for( std::list<SeedingHitSet>::const_iterator it = tripletList.begin(); it != tripletList.end(); ++it ) {
-      theResult.push_back( *it );
+    for( std::list<tripletWithDir>::const_iterator it = tripletList.begin(); it != tripletList.end(); ++it ) {
+      theResult.push_back( it->first );
     }
   }
 
@@ -257,7 +268,8 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
 ///
 const TrajectorySeedCollection QuadrupletSeedMerger::mergeTriplets( const TrajectorySeedCollection& seedCollection,
 								    const TrackingRegion& region,
-								    const edm::EventSetup& es ) {
+								    const edm::EventSetup& es,
+                                                                    const edm::ParameterSet& cfg ) {
 
   // ttrh builder for HitSet -> TrajectorySeed conversion;
   // require this to be correctly configured, otherwise -> exception
@@ -318,12 +330,19 @@ const TrajectorySeedCollection QuadrupletSeedMerger::mergeTriplets( const Trajec
   const std::vector<SeedingHitSet> quadrupletHitSets = mergeTriplets( inputTriplets, es );
   
   // convert back to TrajectorySeedCollection
-  SeedFromConsecutiveHitsCreator seedCreator;
+
+  // the idea here is to fetch the same SeedCreator and PSet
+  // as those used by the plugin which is calling the merger
+  // (at the moment that's SeedGeneratorFromRegionHitsEDProducer)
+  edm::ParameterSet creatorPSet = cfg.getParameter<edm::ParameterSet>("SeedCreatorPSet");
+  std::string const& creatorName = creatorPSet.getParameter<std::string>( "ComponentName" );
+  SeedCreator* seedCreator = SeedCreatorFactory::get()->create( creatorName, creatorPSet );
+
   for( std::vector<SeedingHitSet>::const_iterator aHitSetIt = quadrupletHitSets.begin();
        aHitSetIt < quadrupletHitSets.end(); ++aHitSetIt ) {
     
     // add trajectory seed to result collection
-    seedCreator.trajectorySeed( theResult, *aHitSetIt, region, es );
+    seedCreator->trajectorySeed( theResult, *aHitSetIt, region, es );
     
   }
 
@@ -353,6 +372,38 @@ bool QuadrupletSeedMerger::isEqual( const TrackingRecHit* hit1, const TrackingRe
 
   return false;
 
+}
+
+
+
+///
+///
+///
+std::pair<double,double> QuadrupletSeedMerger::calculatePhiEta( SeedingHitSet const& nTuplet ) const {
+
+//   if( nTuplet.size() < 3 ) {
+//     std::cerr << " [QuadrupletSeedMerger::calculatePhiEta] ** ERROR: nTuplet has less than 3 hits" << std::endl;
+//     throw; // tbr.
+//   }
+
+  const TrackingRecHit* hit1 = nTuplet[0]->hit();
+  const GeomDet* geomDet1 = theTrackerGeometry_->idToDet( hit1->geographicalId() );
+
+  const TrackingRecHit* hit2 = nTuplet[1]->hit();
+  const GeomDet* geomDet2 = theTrackerGeometry_->idToDet( hit2->geographicalId() );
+
+  const double x1 = geomDet1->toGlobal( hit1->localPosition() ).x();
+  const double x2 = geomDet2->toGlobal( hit2->localPosition() ).x();
+  const double y1 = geomDet1->toGlobal( hit1->localPosition() ).y();
+  const double y2 = geomDet2->toGlobal( hit2->localPosition() ).y();
+  const double z1 = geomDet1->toGlobal( hit1->localPosition() ).z();
+  const double z2 = geomDet2->toGlobal( hit2->localPosition() ).z();
+
+  const double phi = atan2( x2 - x1, y2 -y1 );
+  const double eta = acos( (z2 - z1) / sqrt( pow( x2 - x1, 2. ) + pow( y2 - y1, 2. ) + pow( z2 - z1, 2. ) ) );
+
+  return std::make_pair<double,double>( phi, eta );
+  
 }
 
 

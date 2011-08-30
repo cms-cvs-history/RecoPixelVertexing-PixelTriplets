@@ -27,7 +27,7 @@
 #include "RecoTracker/TkSeedingLayers/interface/SeedingHitSet.h"
 #include "RecoTracker/TransientTrackingRecHit/interface/TSiPixelRecHit.h"
 #include "RecoTracker/TkTrackingRegions/interface/TrackingRegion.h"
-#include "RecoTracker/TkSeedGenerator/interface/SeedFromConsecutiveHitsCreator.h"
+#include "RecoTracker/TkSeedGenerator/interface/SeedCreatorFactory.h"
 
 #include "TrackingTools/TransientTrackingRecHit/interface/TransientTrackingRecHitBuilder.h"
 #include "TrackingTools/Records/interface/TransientRecHitRecord.h"
@@ -76,8 +76,9 @@ class QuadrupletSeedMerger {
   QuadrupletSeedMerger( const edm::EventSetup& );
   ~QuadrupletSeedMerger();
   const std::vector<SeedingHitSet> mergeTriplets( const OrderedSeedingHits&, const edm::EventSetup& );
-  const TrajectorySeedCollection mergeTriplets( const TrajectorySeedCollection&, const TrackingRegion&, const edm::EventSetup& );
+  const TrajectorySeedCollection mergeTriplets( const TrajectorySeedCollection&, const TrackingRegion&, const edm::EventSetup&, const edm::ParameterSet& );
   bool isEqual( const TrackingRecHit*, const TrackingRecHit* ) const;
+  std::pair<double,double> calculatePhiEta( SeedingHitSet const& ) const;
   void printHit( const TrackingRecHit* ) const;
   void printHit( const  TransientTrackingRecHit::ConstRecHitPointer& ) const;
   void printNtuplet( const SeedingHitSet& ) const;
