@@ -183,8 +183,9 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
 	    ///////////////////////////////////////////////////////
             const std::pair<double,double>& phiEta1 = tripletWithDir1->second;
 	    const std::pair<double,double>& phiEta2 = tripletWithDir2->second;
- 	    if( abs( phiEta1.first - phiEta2.first ) > 0.15 ) continue;
- 	    if( abs( phiEta1.second - phiEta2.second ) > 0.05 ) continue;
+	    double temp = fabs( phiEta1.first - phiEta2.first );
+ 	    if( (temp > 0.15) && (temp <6.133185) ) continue;
+ 	    if( fabs( phiEta1.second - phiEta2.second ) > 0.05 ) continue;
 	    ///////////////////////////////////////////////////////
 
 	    // do both triplets have shared hits on these two layers?
@@ -358,20 +359,18 @@ const TrajectorySeedCollection QuadrupletSeedMerger::mergeTriplets( const Trajec
 bool QuadrupletSeedMerger::isEqual( const TrackingRecHit* hit1, const TrackingRecHit* hit2 ) const {
 
   const double epsilon = 0.00001;
-
-  const GeomDet* geomDet1 = theTrackerGeometry_->idToDet( hit1->geographicalId() );
-  GlobalPoint const& gp1 = geomDet1->toGlobal( hit1->localPosition() );
-  const GeomDet* geomDet2 = theTrackerGeometry_->idToDet( hit2->geographicalId() );
-  GlobalPoint const& gp2 = geomDet2->toGlobal( hit2->localPosition() );
-
-  if( ( fabs( gp1.x() - gp2.x() ) < epsilon ) &&
-      ( fabs( gp1.y() - gp2.y() ) < epsilon ) &&
-      ( fabs( gp1.z() - gp2.z() ) < epsilon ) ) {
-    return true;
+  
+  DetId det1 =  hit1->geographicalId(), det2 =  hit2->geographicalId();
+  if (det1 == det2) { 
+    LocalPoint lp1 = hit1->localPosition(), lp2 = hit2->localPosition();
+    if( ( fabs( lp1.x() - lp2.x() ) < epsilon ) &&
+	( fabs( lp1.y() - lp2.y() ) < epsilon ) ) {
+      return true;
+    }
+    
   }
-
   return false;
-
+  
 }
 
 
@@ -554,65 +553,62 @@ bool QuadrupletSeedMerger::isTripletsShareHitsOnLayers( const SeedingHitSet& fir
   std::pair<TransientTrackingRecHit::ConstRecHitPointer,TransientTrackingRecHit::ConstRecHitPointer> hitsTriplet1, hitsTriplet2;
 
   // check if firstTriplet and secondTriplet have hits on sharedLayers
-  for( unsigned int index = 0; index < 3; ++index ) {
-
+  for( unsigned int index = 0; index < 3; ++index )
     { // first triplet
       if( ! firstTriplet[index]->isValid() ) return false; // catch invalid TTRH pointers (tbd: erase triplet)
-       DetId const& thisDetId = firstTriplet[index]->hit()->geographicalId();
+      bool firsthit(false); // Don't look in second layer if found in first
+      DetId const& thisDetId = firstTriplet[index]->hit()->geographicalId();
       
-      
-       if( ! isSuccess1.first ) { // first triplet on shared layer 1
-	 if( sharedLayers.first.isContainsDetector( thisDetId ) ) {
-	   isSuccess1.first = true;
-	   hitsTriplet1.first = firstTriplet[index];
-	 }
-       }
-       
-       if ( ! isSuccess1.second ) { // first triplet on shared layer 2
-	 if( sharedLayers.second.isContainsDetector( thisDetId ) ) {
-	   isSuccess1.second = true;
-	   hitsTriplet1.second = firstTriplet[index];
-	 }
-       }
-
-    }
-
-    { // second triplet
-
-      if( ! secondTriplet[index]->isValid() ) { return false; } // catch invalid TTRH pointers (tbd: erase triplet)
-      DetId const& thisDetId = secondTriplet[index]->hit()->geographicalId();
-
-      if( ! isSuccess2.first ) { // second triplet on shared layer 1
+      if( ! isSuccess1.first ) { // first triplet on shared layer 1
 	if( sharedLayers.first.isContainsDetector( thisDetId ) ) {
-	  isSuccess2.first = true;
-	  hitsTriplet2.first = secondTriplet[index];
+	  isSuccess1.first = true;
+	  firsthit = true;
+	  hitsTriplet1.first = firstTriplet[index];
 	}
       }
       
-      if( ! isSuccess2.second ) { // second triplet on shared layer 2
+      if ( (! firsthit) && (! isSuccess1.second ) && ((index !=3) || isSuccess1.first) ) { // first triplet on shared layer 2
 	if( sharedLayers.second.isContainsDetector( thisDetId ) ) {
-	  isSuccess2.second = true;
-	  hitsTriplet2.second = secondTriplet[index];
+	  isSuccess1.second = true;
+	  hitsTriplet1.second = firstTriplet[index];
+	}
+      } 
+    }
+  
+  if ( isSuccess1.first && isSuccess1.second) { // Don't do second triplet if first unsuccessful
+    for( unsigned int index = 0; index < 3; ++index )
+      { // second triplet
+	if( ! secondTriplet[index]->isValid() ) { return false; } // catch invalid TTRH pointers (tbd: erase triplet)
+	bool firsthit(false); // Don't look in second layer if found in first
+	DetId const& thisDetId = secondTriplet[index]->hit()->geographicalId();
+	
+	if( ! isSuccess2.first ) { // second triplet on shared layer 1
+	  if( sharedLayers.first.isContainsDetector( thisDetId ) ) {
+	    isSuccess2.first = true;
+	    firsthit = true;
+	    hitsTriplet2.first = secondTriplet[index];
+	  }
+	}
+	
+	if( (! firsthit) && (! isSuccess2.second) && ((index !=3) || isSuccess2.first) ) { // second triplet on shared layer 2
+	  if( sharedLayers.second.isContainsDetector( thisDetId ) ) {
+	    isSuccess2.second = true;
+	    hitsTriplet2.second = secondTriplet[index];
+	  }
 	}
       }
-    }
-
-
-  }
-
-  // check if these hits are pairwise equal
-  if( isSuccess1.first && isSuccess1.second && isSuccess2.first && isSuccess2.second ) {
     
-    if( isEqual( hitsTriplet1.first->hit(),  hitsTriplet2.first->hit()  ) &&
-	isEqual( hitsTriplet1.second->hit(), hitsTriplet2.second->hit() )    ) {
-
-      // copy to output, take triplet1 since they're equal anyway
-      hits.first  = hitsTriplet1.first;
-      hits.second = hitsTriplet1.second;
-
-      return true;
+    // check if these hits are pairwise equal
+    if( isSuccess2.first && isSuccess2.second ) {
+      if( isEqual( hitsTriplet1.first->hit(),  hitsTriplet2.first->hit()  ) &&
+	  isEqual( hitsTriplet1.second->hit(), hitsTriplet2.second->hit() )    ) {
+	
+	// copy to output, take triplet1 since they're equal anyway
+	hits.first  = hitsTriplet1.first;
+	hits.second = hitsTriplet1.second;
+	return true;
+      }
     }
-    
   }
   
   // empty output, careful
@@ -699,36 +695,23 @@ SeedMergerPixelLayer::SeedMergerPixelLayer( const std::string& name ) {
   name_ = name;
 
   // (output format -> see DataFormats/SiPixelDetId/interface/PixelSubdetector.h)
-  if( std::string::npos != name_.find( "BPix" ) ) subdet_ = PixelSubdetector::PixelBarrel;
-  else if( std::string::npos != name_.find( "FPix" ) ) subdet_ = PixelSubdetector::PixelEndcap;
+  if( std::string::npos != name_.find( "BPix" ) ) 
+    { subdet_ = PixelSubdetector::PixelBarrel; side_ = Undefined;}
+  else if( std::string::npos != name_.find( "FPix" ) ) 
+    { subdet_ = PixelSubdetector::PixelEndcap;
+      if( std::string::npos != name_.find( "pos", 6 ) ) side_ = Plus;
+      else if( std::string::npos != name_.find( "neg", 6 ) ) side_ = Minus;
+      else {
+	std::cerr << " [PixelLayerNameParser::side] ** ERROR: something's wrong here.." << std::endl;
+	side_ = SideError;
+      }
+    }
   else {
     std::cerr << " [PixelLayerNameParser::subdetector] ** ERROR: something's wrong here.." << std::endl;
   }
 
   // layer
   layer_ = atoi( name_.substr( 4, 1 ).c_str() );
-
-}
-
-
-
-///
-///
-///
-SeedMergerPixelLayer::Side SeedMergerPixelLayer::getSide( void ) const {
-
-  SeedMergerPixelLayer::Side side;
-
-  if( std::string::npos != name_.find( "BPix" ) ) return Undefined; // no side in barrel
-  else if( std::string::npos != name_.find( "pos", 6 ) ) return Plus;
-  else if( std::string::npos != name_.find( "neg", 6 ) ) return Minus;
-
-  else {
-    std::cerr << " [PixelLayerNameParser::side] ** ERROR: something's wrong here.." << std::endl;
-    side = SideError;
-  }
-
-  return side;
 
 }
 
@@ -772,33 +755,20 @@ bool SeedMergerPixelLayer::isContainsDetector( const DetId& detId ) const {
     
     // same barrel layer?
     if( PixelSubdetector::PixelBarrel == subdet ) {
-      
-      const int layer = getLayerNumber();
-      if( PixelBarrelName::PixelBarrelName( detId ).layerName() == layer ) {
+      const PXBDetId cmssw_numbering(detId);
+      if (cmssw_numbering.layer() == getLayerNumber()) {
 	return true;
       }
-      
     }
-
+    
     // same endcap disk?
     else if( PixelSubdetector::PixelEndcap == subdet ) {
-      
-      const int layer = getLayerNumber();
-      if( PixelEndcapName::PixelEndcapName( detId ).diskName() == layer ) {
-	
-	// endcap: same side?
-	PixelEndcapName::HalfCylinder cylinder = PixelEndcapName::PixelEndcapName( detId ).halfCylinder();
-	SeedMergerPixelLayer::Side side = getSide();
-
-	if( ( ( PixelEndcapName::mO == cylinder || PixelEndcapName::mI == cylinder ) && SeedMergerPixelLayer::Minus == side ) ||
-	    ( ( PixelEndcapName::pO == cylinder || PixelEndcapName::pI == cylinder ) && SeedMergerPixelLayer::Plus  == side )    ) {
-	  
+      PXFDetId px_numbering(detId);
+      if (px_numbering.disk() == getLayerNumber()) {
+	if (px_numbering.side() == (unsigned)getSide()) {
 	  return true;
-
 	}
-	
       }
-      
     }
     
   }
