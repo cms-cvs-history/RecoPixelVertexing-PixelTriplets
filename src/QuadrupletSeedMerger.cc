@@ -343,7 +343,7 @@ const TrajectorySeedCollection QuadrupletSeedMerger::mergeTriplets( const Trajec
        aHitSetIt < quadrupletHitSets.end(); ++aHitSetIt ) {
     
     // add trajectory seed to result collection
-    seedCreator->trajectorySeed( theResult, *aHitSetIt, region, es );
+    seedCreator->trajectorySeed( theResult, *aHitSetIt, region, es, 0 );
     
   }
 
