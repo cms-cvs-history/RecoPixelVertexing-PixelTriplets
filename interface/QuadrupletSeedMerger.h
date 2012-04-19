@@ -90,18 +90,37 @@ class QuadrupletSeedMerger {
 
  private:
 
-  bool isValidQuadruplet( const SeedingHitSet&, const std::vector<SeedMergerPixelLayer>& ) const;
+  std::vector<TransientTrackingRecHit::ConstRecHitPointer> mySort(TransientTrackingRecHit::ConstRecHitPointer &h1,
+								  TransientTrackingRecHit::ConstRecHitPointer &h2,
+								  TransientTrackingRecHit::ConstRecHitPointer &h3,
+								  TransientTrackingRecHit::ConstRecHitPointer &h4);
+    
 
-  bool isTripletsShareHitsOnLayers( const SeedingHitSet&, const SeedingHitSet&, 
-    const std::pair<SeedMergerPixelLayer, SeedMergerPixelLayer>&,
-    std::pair<TransientTrackingRecHit::ConstRecHitPointer,TransientTrackingRecHit::ConstRecHitPointer>& ) const;
+  bool addToResult(std::vector<TransientTrackingRecHit::ConstRecHitPointer> &unsortedHits,
+		   std::vector<SeedMergerPixelLayer> &currentLayers,
+		   std::vector<SeedingHitSet> &theResult);
 
-  bool isMergeableHitsInTriplets( const SeedingHitSet&, const SeedingHitSet&, 
-    const std::pair<SeedMergerPixelLayer, SeedMergerPixelLayer>&,
-    std::pair<TransientTrackingRecHit::ConstRecHitPointer,TransientTrackingRecHit::ConstRecHitPointer>& ) const;
+  bool isValidQuadruplet( std::vector<TransientTrackingRecHit::ConstRecHitPointer> &quadruplet, const std::vector<SeedMergerPixelLayer>& layers ) const; 
 
-  bool isGreaterHit( const TransientTrackingRecHit::ConstRecHitPointer&,
-		     const TransientTrackingRecHit::ConstRecHitPointer&  );
+    // bool isValidQuadruplet( const SeedingHitSet&, const std::vector<SeedMergerPixelLayer>& ) const;
+
+bool isTripletsShareHitsOnLayers( const SeedingHitSet& firstTriplet, const SeedingHitSet& secondTriplet, 
+				  const SeedMergerPixelLayer &share1, const SeedMergerPixelLayer &share2,
+				  std::pair<TransientTrackingRecHit::ConstRecHitPointer,TransientTrackingRecHit::ConstRecHitPointer>& hits ) const;
+
+//bool isTripletsShareHitsOnLayers( const SeedingHitSet&, const SeedingHitSet&, 
+//   const std::pair<SeedMergerPixelLayer, SeedMergerPixelLayer>&,
+//  std::pair<TransientTrackingRecHit::ConstRecHitPointer,TransientTrackingRecHit::ConstRecHitPointer>& ) const;
+//
+//  bool isMergeableHitsInTriplets( const SeedingHitSet&, const SeedingHitSet&, 
+//    const std::pair<SeedMergerPixelLayer, SeedMergerPixelLayer>&,
+//    std::pair<TransientTrackingRecHit::ConstRecHitPointer,TransientTrackingRecHit::ConstRecHitPointer>& ) const;
+
+bool isMergeableHitsInTriplets( const SeedingHitSet& firstTriplet, const SeedingHitSet& secondTriplet, 
+				const SeedMergerPixelLayer &nonShared1, const SeedMergerPixelLayer &nonShared2,
+				std::pair<TransientTrackingRecHit::ConstRecHitPointer,TransientTrackingRecHit::ConstRecHitPointer>& hits ) const;
+
+
 
   ctfseeding::SeedingLayerSets theLayerSets_;
   edm::ESHandle<TrackerGeometry> theTrackerGeometry_;
