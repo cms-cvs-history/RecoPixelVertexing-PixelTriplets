@@ -225,15 +225,15 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
   }
 
   //calc for printout...
-  unsigned int nLeft=0;
-  for ( unsigned int i=0; i<nInputTriplets; i++)
-    if ( !usedTriplets[i] ) nLeft++;
+//  unsigned int nLeft=0;
+//  for ( unsigned int i=0; i<nInputTriplets; i++)
+//    if ( !usedTriplets[i] ) nLeft++;
   // some stats
-  std::cout << " [QuadrupletSeedMerger::mergeTriplets] -- Created: " << theResult.size()
-	    << " quadruplets from: " << nInputTriplets << " input triplets (" << nLeft
-	    << " remaining ";
-  std::cout << (isAddRemainingTriplets_?"added":"dropped");
-  std::cout << ")." << std::endl;
+//  std::cout << " [QuadrupletSeedMerger::mergeTriplets] -- Created: " << theResult.size()
+//	    << " quadruplets from: " << nInputTriplets << " input triplets (" << nLeft
+//	    << " remaining ";
+//  std::cout << (isAddRemainingTriplets_?"added":"dropped");
+//  std::cout << ")." << std::endl;
 
   return theResult;
 
