@@ -1,5 +1,5 @@
 
-#include "RecoPixelVertexing/PixelTriplets/interface/QuadrupletSeedMerger.h"
+#include "QuadrupletSeedMerger.h"
 #include <time.h>
 
 /***
@@ -82,13 +82,13 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
   tripletCache.reserve(nInputTriplets);
 
   for( unsigned int it = 0; it < nInputTriplets; ++it ) {
-    tripletCache.push_back(inputTriplets[it]);
-    phiEtaCache.push_back(calculatePhiEta( tripletCache[it] ));
+    tripletCache.push_back((inputTriplets[it]));
+    phiEtaCache.push_back(calculatePhiEta( (tripletCache[it]) ));
 
   }
 
   // the output
-  std::vector<SeedingHitSet> theResult;
+  std::vector< SeedingHitSet> theResult;
 
   // check if the input is all triplets
   // (code is also used for pairs..)
@@ -107,7 +107,7 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
   if( !isAllTriplets || !isMergeTriplets_ ) {
     theResult.reserve(nInputTriplets);
     for( unsigned int it = 0; it < nInputTriplets; ++it ) {
-      theResult.push_back( tripletCache[it]);
+      theResult.push_back( (tripletCache[it]));
     }
 
     return theResult;
@@ -187,12 +187,12 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
 	    //    if ( !phiEtaClose[t1*nInputTriplets+t2] ) continue;
 
 	    // do both triplets have shared hits on these two layers?
-	    if( isTripletsShareHitsOnLayers( tripletCache[t1], tripletCache[t2], 
+	    if( isTripletsShareHitsOnLayers( (tripletCache[t1]), (tripletCache[t2]), 
 					     currentLayers[s1],
 					     currentLayers[s2], sharedHits ) ) {
 
 	      // are the remaining hits on different layers?
-	      if( isMergeableHitsInTriplets( tripletCache[t1], tripletCache[t2], 
+	      if( isMergeableHitsInTriplets( (tripletCache[t1]), (tripletCache[t2]), 
 					     currentLayers[nonSharedLayerNums[0]],
 					     currentLayers[nonSharedLayerNums[1]], nonSharedHits ) ) {
 
@@ -202,11 +202,19 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
 											     nonSharedHits.first,
 											     nonSharedHits.second);
 
-		bool added=addToResult(unsortedHits,currentLayers,theResult);
-		if ( added) {
+		//start here with old addtoresult
+		if( isValidQuadruplet( unsortedHits, currentLayers ) ) {
+		  // and create the quadruplet
+		  SeedingHitSet quadruplet(unsortedHits[0],unsortedHits[1],unsortedHits[2],unsortedHits[3]);
+		  
+		  // insert this quadruplet
+		  theResult.push_back( quadruplet );
+		  // remove both triplets from the list,
+		  // needs this 4-permutation since we're in a double loop
 		  usedTriplets[t1]=true;
 		  usedTriplets[t2]=true;
 		}
+		
 	      } // isMergeableHitsInTriplets
  	    } // isTripletsShareHitsOnLayers
 	    // } // triplet double loop
@@ -220,7 +228,7 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
   if( isAddRemainingTriplets_ ) {
     for( unsigned int it = 0; it < nInputTriplets; ++it ) {
       if ( !usedTriplets[it] ) 
-	   theResult.push_back( tripletCache[it]);
+	theResult.push_back( tripletCache[it]);
     }
   }
 
@@ -388,7 +396,10 @@ std::pair<double,double> QuadrupletSeedMerger::calculatePhiEta( SeedingHitSet co
   const double phi = atan2( x2 - x1, y2 -y1 );
   const double eta = acos( (z2 - z1) / sqrt( pow( x2 - x1, 2. ) + pow( y2 - y1, 2. ) + pow( z2 - z1, 2. ) ) );
 
-  return std::make_pair<double,double>( phi, eta );
+  std::pair<double,double> retVal;
+  retVal=std::make_pair (phi,eta);
+  return retVal;
+  //return std::make_pair<double,double>( phi, eta );
   
 }
 
@@ -440,13 +451,16 @@ void QuadrupletSeedMerger::printNtuplet( const SeedingHitSet& aNtuplet ) const {
     std::string detName;
     if( PixelSubdetector::PixelBarrel == theHit->geographicalId().subdetId() ) {
       detName = "BPIX ";
-      layer = PixelBarrelName::PixelBarrelName( aNtuplet[aHit]->hit()->geographicalId() ).layerName();
+      PixelBarrelName pbn( aNtuplet[aHit]->hit()->geographicalId());
+      layer = pbn.layerName();
     }
     else {
       detName = "FPIX";
       if( z > 0 ) detName += "+";
       else detName += "-";
-      layer = PixelEndcapName::PixelEndcapName( theHit->geographicalId() ).diskName();
+
+      PixelEndcapName pen( theHit->geographicalId() );
+      layer = pen.diskName();
     }
 
     std::cout << "<NtupletHit> D: " << detName << " L: " << layer << " x: " << x << " y: " << y << " z: " << z << " r: " << r << std::endl;
@@ -804,21 +818,4 @@ std::vector<TransientTrackingRecHit::ConstRecHitPointer> QuadrupletSeedMerger::m
 }
 
 
-bool QuadrupletSeedMerger::addToResult(std::vector<TransientTrackingRecHit::ConstRecHitPointer> &unsortedHits,
-				       std::vector<SeedMergerPixelLayer> &currentLayers,
-				       std::vector<SeedingHitSet> &theResult) {
-  // add to result
-  if( isValidQuadruplet( unsortedHits, currentLayers ) ) {
-    // and create the quadruplet
-    SeedingHitSet quadruplet;
-    for( unsigned int aHit = 0; aHit < unsortedHits.size(); ++aHit ) quadruplet.add( unsortedHits[aHit] );
-    
-    // insert this quadruplet
-    theResult.push_back( quadruplet );
-    // remove both triplets from the list,
-    // needs this 4-permutation since we're in a double loop
-    return true;
-  }
-  return false;
-}
 

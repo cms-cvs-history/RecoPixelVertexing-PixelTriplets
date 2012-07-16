@@ -10,7 +10,7 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "RecoPixelVertexing/PixelTriplets/interface/OrderedHitTriplets.h"
-#include "RecoPixelVertexing/PixelTriplets/src/LayerTriplets.h"
+#include "LayerTriplets.h"
 
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
@@ -95,10 +95,6 @@ class QuadrupletSeedMerger {
 								  TransientTrackingRecHit::ConstRecHitPointer &h3,
 								  TransientTrackingRecHit::ConstRecHitPointer &h4);
     
-
-  bool addToResult(std::vector<TransientTrackingRecHit::ConstRecHitPointer> &unsortedHits,
-		   std::vector<SeedMergerPixelLayer> &currentLayers,
-		   std::vector<SeedingHitSet> &theResult);
 
   bool isValidQuadruplet( std::vector<TransientTrackingRecHit::ConstRecHitPointer> &quadruplet, const std::vector<SeedMergerPixelLayer>& layers ) const; 
 
