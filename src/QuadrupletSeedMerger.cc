@@ -70,6 +70,11 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
   es.get<TrackerDigiGeometryRecord>().get( layerListName_.c_str(), layerBuilder );
   theLayerSets_ = layerBuilder->layers( es ); // this is a vector<vector<SeedingLayer> >
 
+  // the output
+  std::vector< SeedingHitSet> theResult;
+  const unsigned int nInputTriplets = inputTriplets.size();
+  if (nInputTriplets == 0)
+    { return theResult;}
   
   // make a working copy of the input triplets
   // to be able to remove merged triplets
@@ -77,7 +82,6 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
   std::vector<std::pair<double,double> > phiEtaCache;
   std::vector<SeedingHitSet> tripletCache; //somethings strange about OrderedSeedingHits?
 
-  const unsigned int nInputTriplets = inputTriplets.size();
   phiEtaCache.reserve(nInputTriplets);
   tripletCache.reserve(nInputTriplets);
 
@@ -87,8 +91,6 @@ const std::vector<SeedingHitSet> QuadrupletSeedMerger::mergeTriplets( const Orde
 
   }
 
-  // the output
-  std::vector< SeedingHitSet> theResult;
 
   // check if the input is all triplets
   // (code is also used for pairs..)
@@ -270,13 +272,16 @@ const TrajectorySeedCollection QuadrupletSeedMerger::mergeTriplets( const Trajec
 
   // output collection
   TrajectorySeedCollection theResult;
-
+ 
   // loop to see if we have triplets ONLY
   // if not, copy input -> output and return
   bool isAllTriplets = true;
   for( TrajectorySeedCollection::const_iterator aTrajectorySeed = seedCollection.begin();
        aTrajectorySeed < seedCollection.end(); ++aTrajectorySeed ) {
-    if( 3 != aTrajectorySeed->nHits() ) isAllTriplets = false;
+    if( 3 != aTrajectorySeed->nHits() ) 
+      { isAllTriplets = false;
+	break;
+      }
   }
 
   if( !isAllTriplets && isMergeTriplets_ )
